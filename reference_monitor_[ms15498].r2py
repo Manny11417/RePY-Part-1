@@ -1,0 +1,57 @@
+class ReferenceMonitor:
+    def __init__(self):
+        self.a_file = None
+        self.b_file = None
+
+    def ABOpenfile(self, a_filename, b_filename):
+        try:
+            self.a_file = open(a_filename, 'a+')
+            self.b_file = open(b_filename, 'a+')
+            print("Files opened successfully.")
+        except IOError:
+            print("Error: Could not open files.")
+
+    def readat(self, file_type, position, length):
+        if file_type == 'A':
+            file = self.a_file
+        elif file_type == 'B':
+            file = self.b_file
+        else:
+            print("Invalid file type.")
+            return None
+
+        if file:
+            file.seek(position)
+            data = file.read(length)
+            return data
+        else:
+            print("File not opened.")
+            return None
+
+    def writeat(self, file_type, position, data):
+        if file_type == 'A':
+            file = self.a_file
+        elif file_type == 'B':
+            file = self.b_file
+        else:
+            print("Invalid file type.")
+            return False
+
+        if file:
+            file.seek(position)
+            file.write(data)
+            return True
+        else:
+            print("File not opened.")
+            return False
+
+    def is_valid_update(self, data):
+        return data.startswith('S') and data.endswith('E')
+
+
+# Example usage:
+reference_monitor = ReferenceMonitor()
+reference_monitor.ABOpenfile("A_file.txt", "B_file.txt")
+reference_monitor.writeat('A', 0, 'Start of file: ')
+reference_monitor.writeat('A', 14, 'End of file')
+print(reference_monitor.readat('A', 0, 100))
