@@ -6,6 +6,7 @@ TARGET="target"
 FUNC="func"
 OBJC="objc"
 
+
 class ABFile():
     def __init__(self, filename, create):
         # Local (per object) reference to the underlying file
@@ -21,6 +22,13 @@ class ABFile():
             self.Afile.writeat('SE', 0)
 
     def writeat(self, data, offset):
+        # Ensure offset is within file bounds
+        current_size = len(self.Bfile.readat(None, 0))
+        if offset > current_size:
+            # Extend file size by writing null bytes up to offset
+            self.Bfile.writeat('\x00' * (offset - current_size), current_size)
+            current_size = offset
+
         # Write the requested data to the B file
         self.Bfile.writeat(data, offset)
 
@@ -38,20 +46,3 @@ class ABFile():
         # Close both files
         self.Afile.close()
         self.Bfile.close()
-
-def ABopenfile(filename, create):
-    return ABFile(filename, create)
-
-# Set up type checking and variable hiding
-sec_file_def = {
-    "obj-type": ABFile,
-    "name": "ABFile",
-    "writeat": {"type": "func", "args": (str, int), "exceptions": Exception, "return": (int, type(None)), "target": ABFile.writeat},
-    "readat": {"type": "func", "args": ((int, type(None)), (int)), "exceptions": Exception, "return": str, "target": ABFile.readat},
-    "close": {"type": "func", "args": None, "exceptions": None, "return": (bool, type(None)), "target": ABFile.close}
-}
-
-CHILD_CONTEXT_DEF["ABopenfile"] = {TYPE: OBJC, ARGS: (str, bool), EXCP: Exception, RETURN: sec_file_def, TARGET: ABopenfile}
-
-# Execute the user code
-secure_dispatch_module()
