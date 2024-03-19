@@ -8,44 +8,52 @@ OBJC="objc"
 
 class ABFileReferenceMonitor():
     def __init__(self):
-        self._allowed_functions = {
-            "openfile": self._check_openfile,
-            "writeat": self._check_writeat,
-            "readat": self._check_readat,
-            "close": self._check_close
-        }
+        pass
+
+    def _is_valid_file(self, filename):
+        # Check if the file is valid according to Requirement 2
+        if filename.startswith('S') and filename.endswith('E'):
+            return True
+        return False
 
     def _check_openfile(self, filename, create):
-        # Your access control logic for openfile goes here
-        return True  # For simplicity, always allow openfile
+        # Check if create value is manipulated
+        if not create:
+            return False
+        
+        # Check if the file is valid according to Requirement 2
+        if not self._is_valid_file(filename):
+            return False
+
+        return True
 
     def _check_writeat(self, abfile, data, offset):
-        # Your access control logic for writeat goes here
-        # Example: Allow writing only if the file is open and not closed
-        if isinstance(abfile, ABFile):
-            return True
-        return False
+        # Check if the file is valid according to Requirement 2
+        if not self._is_valid_file(abfile.Afn):
+            return False
+        return True
 
     def _check_readat(self, abfile, bytes, offset):
-        # Your access control logic for readat goes here
-        # Example: Allow reading only if the file is open and not closed
-        if isinstance(abfile, ABFile):
-            return True
-        return False
+        # Check if the file is valid according to Requirement 2
+        if not self._is_valid_file(abfile.Afn):
+            return False
+        return True
 
     def _check_close(self, abfile):
-        # Your access control logic for close goes here
-        # Example: Allow closing only if the file is open
-        if isinstance(abfile, ABFile):
-            return True
-        return False
+        # Check if both files are valid according to Requirement 4
+        if self._is_valid_file(abfile.Afn) and self._is_valid_file(abfile.Bfn):
+            # Replace original file's data with data of filename.b
+            abfile.Afile = openfile(abfile.Afn, False)  # Open the file in write mode
+            abfile.Afile.writeat(abfile.Bfile.readat(0, 0), 0)  # Write data from filename.b to filename.a
+            abfile.Afile.close()
+        return True
 
     def enforce_security(self, function_name, *args):
-        if function_name in self._allowed_functions:
+        if function_name in ["openfile", "writeat", "readat", "close"]:
             return self._allowed_functions[function_name](*args)
         else:
-            # Raise an exception for unknown function calls
-            raise Exception("Unknown function: {}".format(function_name))
+            # Raise an exception for unknown function calls (Requirement 1)
+            return False
 
 # Instantiate the reference monitor
 reference_monitor = ABFileReferenceMonitor()
@@ -59,12 +67,10 @@ class ABFile():
         self.Afn = filename+'.a'
         self.Bfn = filename+'.b'
 
-        if create:
-            if reference_monitor.enforce_security("openfile", self.Afn, create) and reference_monitor.enforce_security("openfile", self.Bfn, create):
-                self.Afile = openfile(self.Afn, create)
-                self.Bfile = openfile(self.Bfn, create)
-                self.Afile.writeat('SE',0)
-
+        if reference_monitor.enforce_security("openfile", self.Afn, create) and reference_monitor.enforce_security("openfile", self.Bfn, create):
+            self.Afile = openfile(self.Afn, create)
+            self.Bfile = openfile(self.Bfn, create)
+            self.Afile.writeat('SE',0)
 
     def writeat(self,data,offset):
         if reference_monitor.enforce_security("writeat", self, data, offset):
@@ -76,8 +82,8 @@ class ABFile():
 
     def close(self):
         if reference_monitor.enforce_security("close", self):
-            self.Afile.close()
             self.Bfile.close()
+            reference_monitor._check_close(self)  # Call close check from the reference monitor
 
 def ABopenfile(filename, create):
     return ABFile(filename, create)
