@@ -6,91 +6,52 @@ TARGET="target"
 FUNC="func"
 OBJC="objc"
 
-class ABFileReferenceMonitor():
-    def __init__(self):
-        self._allowed_functions = {
-            "openfile": self._check_openfile,
-            "writeat": self._check_writeat,
-            "readat": self._check_readat,
-            "close": self._check_close
-        }
-
-    def _check_openfile(self, filename, create):
-        # Your access control logic for openfile goes here
-        return True  # For simplicity, always allow openfile
-
-    def _check_writeat(self, abfile, data, offset):
-        # Your access control logic for writeat goes here
-        # Example: Allow writing only if the file is open and not closed
-        if isinstance(abfile, ABFile):
-            return True
-        return False
-
-    def _check_readat(self, abfile, bytes, offset):
-        # Your access control logic for readat goes here
-        # Example: Allow reading only if the file is open and not closed
-        if isinstance(abfile, ABFile):
-            return True
-        return False
-
-    def _check_close(self, abfile):
-        # Your access control logic for close goes here
-        # Example: Allow closing only if the file is open
-        if isinstance(abfile, ABFile):
-            return True
-        return False
-
-    def enforce_security(self, function_name, *args):
-        if function_name in self._allowed_functions:
-            return self._allowed_functions[function_name](*args)
-        else:
-            # Raise an exception for unknown function calls
-            raise Exception("Unknown function: {}".format(function_name))
-
-# Instantiate the reference monitor
-reference_monitor = ABFileReferenceMonitor()
-
-# User code
 class ABFile():
-    def __init__(self,filename,create):
-        # globals
-        mycontext['debug'] = False   
-        # local (per object) reference to the underlying file
-        self.Afn = filename+'.a'
-        self.Bfn = filename+'.b'
+    def __init__(self, filename, create):
+        # Local (per object) reference to the underlying file
+        self.Afn = filename + '.a'
+        self.Bfn = filename + '.b'
 
+        # Create or open files based on the create flag
+        self.Afile = openfile(self.Afn, create)
+        self.Bfile = openfile(self.Bfn, create)
+
+        # If creating a file, initialize with 'SE'
         if create:
-            if reference_monitor.enforce_security("openfile", self.Afn, create) and reference_monitor.enforce_security("openfile", self.Bfn, create):
-                self.Afile = openfile(self.Afn, create)
-                self.Bfile = openfile(self.Bfn, create)
-                self.Afile.writeat('SE',0)
+            self.Afile.writeat('SE', 0)
 
+    def writeat(self, data, offset):
+        # Write the requested data to the B file
+        self.Bfile.writeat(data, offset)
 
-    def writeat(self,data,offset):
-        if reference_monitor.enforce_security("writeat", self, data, offset):
-            self.Bfile.writeat(data, offset)
-
-    def readat(self,bytes,offset):
-        if reference_monitor.enforce_security("readat", self, bytes, offset):
-            return self.Afile.readat(bytes, offset)
+    def readat(self, bytes, offset):
+        # Read from the A file
+        return self.Afile.readat(bytes, offset)
 
     def close(self):
-        if reference_monitor.enforce_security("close", self):
-            self.Afile.close()
-            self.Bfile.close()
+        # Check if filename.b starts with 'S' and ends with 'E'
+        fileb_data = self.Bfile.readat(None, 0)
+        if fileb_data.startswith('S') and fileb_data.endswith('E'):
+            # Replace filename.a with filename.b's data
+            self.Afile.writeat(fileb_data, 0)
+
+        # Close both files
+        self.Afile.close()
+        self.Bfile.close()
 
 def ABopenfile(filename, create):
     return ABFile(filename, create)
 
-sec_file_def = {"obj-type":ABFile,
-                "name":"ABFile",
-                "writeat":{"type":"func","args":(str,int),"exceptions":Exception,"return":(int,type(None)),"target":ABFile.writeat},
-                "readat":{"type":"func","args":((int,type(None)),(int)),"exceptions":Exception,"return":str,"target":ABFile.readat},
-                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":ABFile.close}
-               }
+# Set up type checking and variable hiding
+sec_file_def = {
+    "obj-type": ABFile,
+    "name": "ABFile",
+    "writeat": {"type": "func", "args": (str, int), "exceptions": Exception, "return": (int, type(None)), "target": ABFile.writeat},
+    "readat": {"type": "func", "args": ((int, type(None)), (int)), "exceptions": Exception, "return": str, "target": ABFile.readat},
+    "close": {"type": "func", "args": None, "exceptions": None, "return": (bool, type(None)), "target": ABFile.close}
+}
 
-CHILD_CONTEXT_DEF["ABopenfile"] = {TYPE:OBJC,ARGS:(str,bool),EXCP:Exception,RETURN:sec_file_def,TARGET:ABopenfile}
+CHILD_CONTEXT_DEF["ABopenfile"] = {TYPE: OBJC, ARGS: (str, bool), EXCP: Exception, RETURN: sec_file_def, TARGET: ABopenfile}
 
-# You may need to adjust the following line according to your system's security enforcement mechanism
-# For instance, in a real system, you might need to perform more complex enforcement.
+# Execute the user code
 secure_dispatch_module()
