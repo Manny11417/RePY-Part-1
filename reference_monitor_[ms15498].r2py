@@ -28,6 +28,15 @@ class ABFile():
         # Read from the A file
         return self.Afile.readat(bytes, offset)
 
+
+    def write_past_eof(self, data):
+        # Write data at the end of the file (past EOF)
+        current_position = self.Bfile.tell()
+        self.Bfile.seek(0, 2)  # Move to the end of the file
+        self.Bfile.write(data)
+        self.Bfile.seek(current_position) 
+
+
     def close(self):
         # Check if filename.b starts with 'S' and ends with 'E'
         fileb_data = self.Bfile.readat(None, 0)
