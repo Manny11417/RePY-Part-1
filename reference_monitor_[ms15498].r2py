@@ -20,7 +20,14 @@ class ABFile():
         if create:
             self.Afile.writeat('SE', 0)
 
-    def writeat(self, data, offset):
+  def writeat(self, data, offset):
+        # Ensure offset is within file bounds
+        current_size = len(self.Bfile.readat(None, 0))
+        if offset > current_size:
+            # Extend file size by writing null bytes up to offset
+            self.Bfile.writeat('\x00' * (offset - current_size), current_size)
+            current_size = offset
+
         # Write the requested data to the B file
         self.Bfile.writeat(data, offset)
 
