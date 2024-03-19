@@ -13,27 +13,14 @@ class ABFile():
             self.Afile.writeat('SE', 0)
 
     def writeat(self, data, offset):
-        # Ensure offset is within file bounds
-        current_size = len(self.Bfile.readat(None, 0))
-        if offset > current_size:
-            # Extend file size by writing null bytes up to offset
-            self.Bfile.writeat('\x00' * (offset - current_size), current_size)
-            current_size = offset
-
-        # Write the requested data to the B file
+        # Write the requested data to the B file using the sandbox's writeat call
         self.Bfile.writeat(data, offset)
 
     def readat(self, bytes, offset):
-        # Read from the A file
+        # Read from the A file using the sandbox's readat
         return self.Afile.readat(bytes, offset)
 
     def close(self):
-        # Check if filename.b starts with 'S' and ends with 'E'
-        fileb_data = self.Bfile.readat(None, 0)
-        if fileb_data.startswith('S') and fileb_data.endswith('E'):
-            # Replace filename.a with filename.b's data
-            self.Afile.writeat(fileb_data, 0)
-
         # Close both files
         self.Afile.close()
         self.Bfile.close()
@@ -41,16 +28,25 @@ class ABFile():
 def ABopenfile(filename, create):
     return ABFile(filename, create)
 
+def is_valid_update(data):
+    """Check if data represents a valid update"""
+    return data.startswith('S') and data.endswith('E')
+
+def secure_writeat(filename, data, offset):
+    """Secure writeat function to prevent evil users from doing great bad things"""
+    if not is_valid_update(data):
+        raise ValueError("Invalid update: Update must start with 'S' and end with 'E'")
+    return ABFile(filename, create=False).writeat(data, offset)
+
 # Set up type checking and variable hiding
 sec_file_def = {
     "obj-type": ABFile,
     "name": "ABFile",
-    "writeat": {"type": "func", "args": (str, int), "exceptions": Exception, "return": (int, type(None)), "target": ABFile.writeat},
+    "writeat": {"type": "func", "args": (str, int), "exceptions": Exception, "return": (int, type(None)), "target": secure_writeat},
     "readat": {"type": "func", "args": ((int, type(None)), (int)), "exceptions": Exception, "return": str, "target": ABFile.readat},
     "close": {"type": "func", "args": None, "exceptions": None, "return": (bool, type(None)), "target": ABFile.close}
 }
 
 CHILD_CONTEXT_DEF["ABopenfile"] = {"type": OBJC, "args": (str, bool), "exceptions": Exception, "return": sec_file_def, "target": ABopenfile}
 
-# Execute the user code
 secure_dispatch_module()
