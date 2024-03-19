@@ -1,12 +1,3 @@
-TYPE="type"
-ARGS="args"
-RETURN="return"
-EXCP="exceptions"
-TARGET="target"
-FUNC="func"
-OBJC="objc"
-
-
 class ABFile():
     def __init__(self, filename, create):
         # Local (per object) reference to the underlying file
@@ -46,3 +37,20 @@ class ABFile():
         # Close both files
         self.Afile.close()
         self.Bfile.close()
+
+def ABopenfile(filename, create):
+    return ABFile(filename, create)
+
+# Set up type checking and variable hiding
+sec_file_def = {
+    "obj-type": ABFile,
+    "name": "ABFile",
+    "writeat": {"type": "func", "args": (str, int), "exceptions": Exception, "return": (int, type(None)), "target": ABFile.writeat},
+    "readat": {"type": "func", "args": ((int, type(None)), (int)), "exceptions": Exception, "return": str, "target": ABFile.readat},
+    "close": {"type": "func", "args": None, "exceptions": None, "return": (bool, type(None)), "target": ABFile.close}
+}
+
+CHILD_CONTEXT_DEF["ABopenfile"] = {"type": OBJC, "args": (str, bool), "exceptions": Exception, "return": sec_file_def, "target": ABopenfile}
+
+# Execute the user code
+secure_dispatch_module()
