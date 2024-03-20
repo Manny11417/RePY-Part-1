@@ -73,7 +73,7 @@ class ABFile():
        except:
            raise FileNotFoundError
      
-# data: the data to write, offest: absolute offset into the file to write
+
  def writeat(self,data,offset):
    self.setLock()
    
@@ -84,13 +84,20 @@ class ABFile():
       # Exception handling code
        self.raiseException(1)
   
-   elif (offset >= fileLength + 1):
-      # Not sure if this code is working correctly - EOF test case is not passing in Gradescope
-       self.raiseException(2)
- 
-   else:
-       self.Bfile.writeat(data,0)
-       self.releaseLock()
+   elif offset >= fileLength:
+       # Write past EOF
+        # Calculate the number of bytes to pad between the current EOF and the new offset
+        padding = offset - fileLength
+        # Append padding bytes before writing the actual data
+        self.Bfile.writeat(b'\x00' * padding + data, fileLength)
+        
+        # Update fileLength after writing
+        fileLength = offset + len(data)
+
+    else:
+        self.Bfile.writeat(data, offset)
+
+    self.releaseLock()
 
  def readat(self,bytes,offset):
    # Read from the A file using readat...
