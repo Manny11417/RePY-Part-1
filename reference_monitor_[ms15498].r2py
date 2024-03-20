@@ -74,18 +74,18 @@ class ABFile():
            raise FileNotFoundError
      
 
- def writeat(self,data,offset):
-   self.setLock()
-   
-   fileLength = len(self.Afile.readat(None,0))
-   
-   # check the offset of the user input.
-   if (offset < 0):
-      # Exception handling code
-       self.raiseException(1)
-  
-   elif offset >= fileLength:
-       # Write past EOF
+def writeat(self, data, offset):
+    self.setLock()
+
+    fileLength = len(self.Afile.readat(None, 0))
+
+    # Check the offset of the user input.
+    if offset < 0:
+        # Exception handling code
+        self.raiseException(1)
+
+    elif offset >= fileLength:
+        # Write past EOF
         # Calculate the number of bytes to pad between the current EOF and the new offset
         padding = offset - fileLength
         # Append padding bytes before writing the actual data
@@ -98,6 +98,7 @@ class ABFile():
         self.Bfile.writeat(data, offset)
 
     self.releaseLock()
+
 
  def readat(self,bytes,offset):
    # Read from the A file using readat...
