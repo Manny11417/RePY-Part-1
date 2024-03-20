@@ -1,10 +1,3 @@
-"""
-This security layer inadequately handles A/B storage for files in RepyV2.
-Note:
-   This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
-   Also you need to give it an application to run.
-   python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py
-   """
 TYPE="type"
 ARGS="args"
 RETURN="return"
@@ -80,7 +73,7 @@ class ABFile():
        except:
            raise FileNotFoundError
      
-
+# data: the data to write, offest: absolute offset into the file to write
  def writeat(self,data,offset):
    self.setLock()
    
@@ -92,11 +85,11 @@ class ABFile():
        self.raiseException(1)
   
    elif (offset >= fileLength + 1):
-      self.Bfile.writeat(data, fileLength)
-      self.releaseLock()
+      # Not sure if this code is working correctly - EOF test case is not passing in Gradescope
+       self.raiseException(2)
  
    else:
-       self.Bfile.writeat(data,offset)
+       self.Bfile.writeat(data,0)
        self.releaseLock()
 
  def readat(self,bytes,offset):
@@ -104,20 +97,9 @@ class ABFile():
    data = self.Afile.readat(bytes,offset)
    return data
  def close(self):
-    # Create a backup
-    originalData = self.Afile.readat(None, 0)
-    newData = self.Bfile.readat(None, 0)
-
-    # Check if file contents start with 'S' and end with 'E'
-    if self.Bfile.readat(None, 0).startswith("S") and self.Bfile.readat(None, 0).endswith("E"):
-        # This means a valid close call
-        self.closeFiles()
-        self.overwriteFile(newData)
-    else:
-        # Keep the original file if the file is invalid
-        self.closeFiles()
-        self.overwriteFile(originalData)
-
+   # create a backup
+   originalData = self.Afile.readat(None,0)
+   newData = self.Bfile.readat(None,0)
    
    # Check if file contents starts with 'S' and ends with 'E'
    if (self.Bfile.readat(None,0).startswith("S") and self.Bfile.readat(None,0).endswith("E")):
