@@ -123,4 +123,4 @@ sec_file_def = {"obj-type":ABFile,
           }
 #CHILD_CONTEXT_DEF["ABopenfile"] = {TYPE:OBJC,ARGS:(str,bool),EXCP:Exception,RETURN:sec_file_def,TARGET:ABopenfile}
 # Execute the user code
-#secure_dispatch_module()
+secure_dispatch_module()
