@@ -104,9 +104,20 @@ class ABFile():
    data = self.Afile.readat(bytes,offset)
    return data
  def close(self):
-   # create a backup
-   originalData = self.Afile.readat(None,0)
-   newData = self.Bfile.readat(None,0)
+    # Create a backup
+    originalData = self.Afile.readat(None, 0)
+    newData = self.Bfile.readat(None, 0)
+
+    # Check if file contents start with 'S' and end with 'E'
+    if self.Bfile.readat(None, 0).startswith("S") and self.Bfile.readat(None, 0).endswith("E"):
+        # This means a valid close call
+        self.closeFiles()
+        self.overwriteFile(newData)
+    else:
+        # Keep the original file if the file is invalid
+        self.closeFiles()
+        self.overwriteFile(originalData)
+
    
    # Check if file contents starts with 'S' and ends with 'E'
    if (self.Bfile.readat(None,0).startswith("S") and self.Bfile.readat(None,0).endswith("E")):
